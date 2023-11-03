@@ -1,0 +1,192 @@
+.data
+	star: .asciiz "*"
+	space: .asciiz " "
+	
+	prompt: .asciiz "input number of stars: "
+	input: .word 0
+	newline: .asciiz "\n"
+	
+.text
+.globl main
+
+
+
+main:
+
+	# DISPLAY THE PROMPT
+	li 		$v0, 4
+	la 		$a0, prompt
+	syscall
+	
+	# READ USER'S INPUT
+	li 		$v0, 5
+	syscall
+	sw 		$v0, input
+	
+	# DECLARE AND INITIALIZE VARIABLES
+	li 		$t5, 1				# set flag to 1
+	li 		$t3, 0				# initialize inc2 count; # of loops for lines
+	li 		$t4, 1				# initialize inc count; # of loops for spaces
+	jal 	reset
+	sub		$t6, $t0, 1			# initialize dec count to input - 1
+
+L1:
+	# print enough spaces, one star
+	#bne		$t5, 1, end		# skip loop if already executed
+	#li		$t5, 0			# set flag to 0
+	jal 	one_star		# first line only has one star
+
+L2:
+	# LOOP TO INCREASE WIDTH OF THE STAR
+	# keeps going as long as flag is set to 2
+	li 		$t5, 2			# set flag to 2
+	jal reset				# reset t0 to original input value
+	jal inc2				# increment this counter; handles # of loops to go through
+	beq $t3, $t0, L3		# if inc 2 = input, go to next loop
+	jal two_star
+
+L3: 
+	# LOOP TO DECREASE WIDTH OF STAR
+	# keeps going as long as flag is set to 3
+	li 		$t5, 3			# set flag to 3
+	jal reset				# reset t0 to original input value
+	jal dec
+	beqz $t6, L4			# if dec count = 0, move to LOOP 4
+	jal two_star
+	
+L4:
+	# PRINT LAST STAR 
+	li		$t5, 0			# set flag to 0
+	jal 	one_star		# last start and program ends
+	
+	
+end:
+	# END PROGRAM
+	li 		$v0, 10
+	syscall
+
+	
+# --------------------SYSTEMS-----------------------------	
+one_star:
+	#beq		$t0, $zero, return_to_main
+	sub 	$t0, $t0, 1			# t0 = n - 1
+	#jal print_t0
+	beqz 	$t0, print_star		# print spaces until n-1 == 0; prints star on nth place
+	
+	jal 	print_space			# loop print n-1 spaces
+	j one_star
+
+two_star:
+	jal 	inc					# inc count increases by 1. L2 starts at 1. L3 starts at input-1
+	sub 	$t0, $t0, $t4		# first loop, 5-2 = 3; 4th iteration, 5-5 = 0, add star
+	beqz 	$t0, print_star_wol	# print spaces until n-1 == 0; prints star on nth place
+
+	jal 	print_space			# loop print n-1 spaces
+	jal		reset				# reset t0 to original input value
+	j two_star
+
+space_between:
+	# create the right number of spaces between the two stars for each line
+	#ld		$t5, inc
+	beq $t5, 2, use_this		# if flag = 2, use inc count
+	beq $t5, 3, use_that		# if flag = 3, use dec count
+	
+	
+	use_this:
+		# for the top part of the star
+		sub		$t4, $t3, 1
+		sll		$t4, $t4, 1 		# shift left logical to multiply by 2^1
+		add		$t4, $t4, 1			# idk why my code works when its ADD and not SUB here
+	
+		j 		L_space
+	
+	use_that:
+		# for the bottom part of the star
+		
+		sll		$t4, $t6, 1 		# shift right logical to divide by 2^1
+		sub		$t4, $t4, 1		# idk why my code works when its SUB and not ADD here
+		
+		j 		L_space
+	
+	
+	#j print_star
+# --------------------PRINTS-----------------------------	
+print_star:
+	# function to print only the star with new line
+	li 		$v0, 4
+	la 		$a0, star
+	syscall
+	
+	jal 	new_line
+	beq		$t5, 0, end 		# if the flag is zero, return to end
+	beq		$t5, 1, L2 			# if the flag is one, return to L2
+	beq		$t5, 2, L2 			# if the flag is two, return to L2
+	beq		$t5, 3, L3 			# if the flag is three, return to L3
+	j L1
+	
+print_star_wol:
+	# function to print only the star without new line
+	# repeats only ONCE every line except the first and last line
+	li 		$v0, 4
+	la 		$a0, star
+	syscall
+	j 		space_between
+
+
+print_space:
+	#function to print the spaces
+	li 		$v0, 4
+	la 		$a0, space
+	syscall
+	
+	jr		$ra 	# exit function back to loop
+	
+L_space:
+	# create the space cushion between the two stars
+	
+	beqz 	$t4, print_star
+	jal 		print_space # print one space and come back
+	
+	beq $t5, 2, this
+	beq $t5, 3, that
+	
+	this:
+		sub 	$t4, $t4, 1 # t4 = 1, t4 - 1 = 0
+		j		L_space
+	
+	that:
+		sub 	$t4, $t4, 1 # t4 = 1, t4 - 1 = 0
+		j		L_space
+	
+	
+	
+new_line:
+	# prints new line
+	li 		$v0, 4
+	la 		$a0, newline
+	syscall
+	jr $ra 	
+	
+# --------------------COUNTERS-----------------------------
+inc:
+	# increment the general 'increase' count
+	add 	$t4, $t4, 1
+	jr $ra
+	
+inc2:
+	# increment the 'increase' count
+	add 	$t3, $t3, 1
+	add		$t4, $t3, $zero		# copy inc2 to inc1
+	
+	jr $ra
+	
+dec:
+	# decrement the 'decrease' count
+	sub 	$t6, $t6, 1
+	add		$t4, $t6, $zero		# copy sec to inc1
+	jr $ra
+	
+ reset:
+ 	# reset t0 back to original input value
+ 	lw 		$t0, input
+ 	jr $ra 	

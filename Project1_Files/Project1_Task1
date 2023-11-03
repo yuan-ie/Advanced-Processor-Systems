@@ -1,0 +1,82 @@
+.data 
+	X: .space 100				# set memory space fro array x
+	Y: .asciiz "Yuan Nghiem"	# my name
+	check_X: .asciiz "This is stored in array X:\n"	
+	check_Y: .asciiz "This is stored in array Y:\n"	
+	newline: .asciiz "\n\n"
+
+.text
+.globl main
+
+main:
+# load addresses of arrays into registers
+	la $a0, X				# load address of array X in register $a0
+	la $a1, Y				# load address of array Y in register $a1
+
+# call the subroutine that copies the string
+	jal strcpy
+	
+# print what is stored in array x
+	jal print_x
+	jal print_y
+
+# exit the program
+	li $v0, 10				# system call code to terminate program
+	syscall
+
+strcpy:
+    lb 		$t0, 0($a1)		# load zeroth byte of array y into t0
+    sb 		$t0, 0($a0)		# store zeroth byte of array y into zeroth byte of array x
+    
+    beqz 	$t0, done_strcpy# if t0 reaches null, terminate loop
+    
+    addi 	$a1, $a1, 1		# increment to next index of array y
+    addi 	$a0, $a0, 1		# increment to next index of array x
+    
+    j strcpy				# restart loop
+    
+print_x:
+	# display caption
+	li		$v0, 4
+	la		$a0, check_X
+	syscall
+	
+	# display array x : my name
+	li		$v0, 4
+	la		$a0, X
+	syscall
+	
+	# new line
+	li		$v0, 4
+	la		$a0, newline
+	syscall
+	
+	jr		$ra
+	
+print_y:
+	# display caption
+	li		$v0, 4
+	la		$a0, check_Y
+	syscall
+	
+	# display array x : my name
+	li		$v0, 4
+	la		$a0, Y
+	syscall
+	
+	# new line
+	li		$v0, 4
+	la		$a0, newline
+	syscall
+	
+	jr		$ra
+	
+done_strcpy:
+	li		$t0, 0			# reset t0
+	sb		$t0, 0($a0)		# null terminate the string
+	jr		$ra
+	
+
+	
+
+

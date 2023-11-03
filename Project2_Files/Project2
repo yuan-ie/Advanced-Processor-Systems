@@ -1,0 +1,371 @@
+.data 
+	prompt: .asciiz ">>> " 
+	#answer: .asciiz "ans = \n\n" # prompt display before the actual answer
+	valid: .asciiz "Valid input\n" # display when input is valid
+	invalid: .asciiz "Invalid input\n" # display when input is invalid
+	user_input: .space 66 # user input is allowed 64 symbols (it says 66, but takes in 64)
+
+	##### FLAGS #####
+	# $t5: set to 1 for open parentheses, 0 to closed parentheses
+	# $t6: set to 1 for integer
+	# $t7: increment for open parentheses, decrement closed parentheses
+	# $t8: set to 1 for SPACE
+	# $t9: set to 1 for operator symbol
+	
+	
+.text
+.globl main
+
+main:
+	li		$t5, 0		# parenthese flag set to 0
+	li		$t6, 0		# integer flag set to 0
+	li		$t7, 0		# parenthese count set to 0
+	li		$t8, 0		# space flag set to 0
+	li		$t9, 0		# operator flag set to 0
+	li		$t3, 0		# COMPARE flag set to 0
+	
+	j		start
+	
+# check for any invalid symbols and symbol format
+continue:
+	j		symbol_check
+	
+# check for incorrect number of parentheses (end result = 0 -> valid)
+parenthese_check:
+	beqz	$t7, integer_check
+	j		invalid1
+# check if it ends with integer (not including parentheses)
+integer_check:
+	beq		$t6, 1, operator_check
+	j		invalid1
+# check if it ends with operator (end result = 0 -> valid)
+operator_check:
+	beqz	$t9, valid1
+	j		invalid1
+	
+##########################################################################	
+	
+# start the loop with displaying ">>> " and receiving input from user
+start: 
+	# DISPLAY THE PROMPT
+	li 		$v0, 4
+	la 		$a0, prompt
+	syscall
+	
+	# READ USER'S INPUT
+	li 		$v0, 8
+	la 		$a0, user_input		# load address of user input into $a0
+	li		$a1, 66				# maximum input of string is 64!! says 66, but it actually takes in only 64.
+	syscall
+	
+	
+	# STORE INPUT INTO ADDRESS
+	la 		$a3, user_input		# load address of user input into $a3
+	lb		$t0, 0($a3)			#load zeroth byte into $t0
+	
+	# CHECK THE NUMBER OF SYMBOLS
+	# j		size_check
+	
+	# CHECK IF THE FUNCTION IS INVALID
+	#j		function_check
+	
+	j		continue
+
+size_check:
+	la 		$a1, user_input		# load address of user input into $a1
+	lb		$t0, 0($a3)			#load zeroth byte into $t0
+	beqz	$t0, check
+	j		size_check
+	
+	check:
+		bge		$t1, 64, invalid1	# if count is greater or equal to 65, invalid
+		jr		$ra					# else finish size_check and return
+	
+symbol_check:
+	# check if it is an integer. otherwise return.
+	#jal		print
+	jal		number_check
+	# check if it is an open parenthese. otherwise return.
+	jal		parent_1
+	# check if it is an closed parenthese. otherwise return.
+	jal		parent_2
+	# check if it is an operator. otherwise return.
+	jal		operators
+	# check if it is an space. otherwise return.
+	jal		space
+	# if none of the above, invalid
+	j		invalid1
+	
+parent_1:
+	beq		$t0, '(', open_parentheses
+	jr		$ra
+	
+parent_2:
+	beq		$t0, ')', close_parentheses
+	jr		$ra
+	
+operators:
+	# check if it is any of the operators
+	beq		$t0, '+', addition
+	beq		$t0, '-', subtraction
+	beq		$t0, '*', multiplication
+	beq		$t0, '/', division
+	jr		$ra
+	
+space:
+	beq		$t0, ' ', space_func
+	jr		$ra
+
+##########################################################################
+
+next_re:
+	addi	$a3, $a3, 1		# increment to the next byte
+	lb		$t0, 0($a3)
+	beq		$t0, '\n', parenthese_check
+	jr		$ra
+
+##########################################################################
+
+# check if it is an integer, otherwise return.
+number_check:
+	beq		$t0, '0', integer
+	beq		$t0, '1', integer
+	beq		$t0, '2', integer
+	beq		$t0, '3', integer
+	beq		$t0, '4', integer
+	beq		$t0, '5', integer
+	beq		$t0, '6', integer
+	beq		$t0, '7', integer
+	beq		$t0, '8', integer
+	beq		$t0, '9', integer
+	jr		$ra
+
+open_parentheses:
+	# NOTE: after '(' can only be an INTEGER, another '(', or SPACE
+
+	# increment unfinished parentheses count
+	addi	$t7, $t7, 1
+	# if integer flag is on, invalid (there cannot be a number before '(')
+	beq		$t6, 1, invalid1
+	# set parenthese flag to 1
+	li		$t5, 1
+	
+	# move to next byte and come back
+	jal		next_re	
+	#jal		print	
+	
+	# check if it is any of the below
+	jal 	number_check
+	jal 	parent_1
+	jal 	space
+	beq		$t0, '+', addition
+	beq		$t0, '-', subtraction
+	
+	# otherwise invalid
+	j		invalid1
+	
+close_parentheses:
+	# NOTE: after ')' can only be an OPERATOR, another ')', or SPACE
+	
+	# increment unfinished parentheses count
+	subi	$t7, $t7, 1
+	# if operator flag is on, invalid (there cannot be an operator before '(')
+	beq		$t9, 1, invalid1
+	# set parenthese flag to 2 for closed
+	li		$t5, 2
+	
+	# move to next byte and come back
+	jal		next_re		
+	#jal		print
+	
+	# check if it is any of the below
+	#jal	 	number_check
+	jal		parent_2
+	jal		operators
+	jal		space
+	
+	# otherwise invalid
+	j		invalid1
+	
+addition:
+	# if integer flag is off, invalid (there must be an operand before sign)
+	#beqz	$t6, invalid1
+	# set operator flag to 1 (operator is in use) and integer flag to 0
+	li		$t9, 1
+	li		$t6, 0
+	# turn off parentheses
+	li		$t5, 0
+	# move to next byte and come back
+	jal		next_re	
+	#jal		print
+	
+	# check if it is any of the below
+	jal 	number_check
+	jal		space
+	jal		parent_1
+	beq		$t0, '+', addition
+	beq		$t0, '-', subtraction
+	
+	# otherwise invalid
+	j		invalid1
+	
+subtraction:
+	# if integer flag is off, invalid (there must be an operand before sign)
+	#beqz	$t6, invalid1
+	# set operator flag to 1 (operator is in use) and integer flag to 0
+	li		$t9, 1
+	li		$t6, 0
+	# turn off parentheses
+	li		$t5, 0
+	# move to next byte and come back
+	jal		next_re	
+	#jal		print
+	
+	# check if it is any of the below
+	jal 	number_check
+	jal		space
+	jal		parent_1
+	beq		$t0, '+', addition
+	beq		$t0, '-', subtraction
+	
+	# otherwise invalid
+	j		invalid1
+
+multiplication:
+	# if integer flag is off, invalid (there must be an operand before sign)
+	beqz	$t6, invalid1
+	# set operator flag to 1 (operator is in use) and integer flag to 0
+	li		$t9, 1
+	li		$t6, 0
+	# turn off parentheses
+	li		$t5, 0
+	# move to next byte and come back
+	jal		next_re	
+	#jal		print
+	
+	# check if it is any of the below
+	jal 	number_check
+	jal		space
+	jal		parent_1
+	beq		$t0, '+', addition
+	beq		$t0, '-', subtraction
+	
+	# otherwise invalid
+	j		invalid1
+
+division:
+	# if integer flag is off, invalid (there must be an operand before sign)
+	beqz	$t6, invalid1
+	# set operator flag to 1 (operator is in use) and integer flag to 0
+	li		$t9, 1
+	li		$t6, 0
+	# turn off parentheses
+	li		$t5, 0
+	# move to next byte and come back
+	jal		next_re	
+	#jal		print
+	
+	# check if it is any of the below
+	jal 	number_check
+	jal		space
+	jal		parent_1
+	beq		$t0, '+', addition
+	beq		$t0, '-', subtraction
+	
+	# otherwise invalid
+	j		invalid1
+	
+integer:	
+	# integer cannot be right after closing parenthese
+	beq		$t5, 2, invalid		# if symbol before is closing parenthese
+	li		$t5, 0				# otherwise, set back to 0
+	# COMPARE FLAG 
+	and		$t3, $t6, $t8 		# (compare integer $t6 and space $t8)
+	beq		$t3, 1, no_number 	# if there is an integer AND space, there cannot be an integer next
+	and		$t3, $t9, $t8		# (compare operator $t9 and space $t8)
+	beq		$t3, 1, no_op 		# if there is an operator AND space, there cannot be an operator next
+	# set operator flag to 0 (operator is not in use)
+	li		$t9, 0
+	# integer flag on
+	li		$t6, 1	
+	# move to next byte and come back
+	jal		next_re	
+	#jal		print
+	
+	jal 	number_check
+	j		no_number
+	# check if it is any of the below
+	# otherwise invalid
+	no_number: 
+		# set SPACE flag to 0 (SPACE is not in use)
+		li		$t8, 0
+		jal		space
+		jal		operators
+		jal		parent_2
+		j		invalid1
+	no_op:
+		# set SPACE flag to 0 (SPACE is not in use)
+		li		$t8, 0
+		jal 	number_check
+		jal		space
+		jal		parent_2
+		j		invalid1
+	
+space_func:
+	# set SPACE flag to 1 (SPACE is in use)
+	li		$t8, 1
+	
+	jal		next_re	
+	#jal		print
+	
+	# any valid symbol can go after SPACE
+	jal		number_check
+	jal		parent_1
+	jal		parent_2
+	jal		operators
+	jal		space
+	# otherwise, INVALID
+	j		invalid1
+	
+
+
+##########################################################################
+
+invalid1:	
+	# NEEDS SOME SORT OF LOOP AND BRANCH FOR THE INVALIDITY
+	
+	# display if input is invalid
+	li 		$v0, 4
+	la 		$a0, invalid
+	syscall
+	j		reset
+	
+	
+valid1:
+	# display if input is valid
+	li 		$v0, 4
+	la 		$a0, valid
+	syscall
+	j		reset
+
+reset:
+	li		$t5, 0		# parenthese flag set to 0
+	li		$t6, 0		# integer flag set to 0
+	li		$t7, 0		# parenthese count set to 0
+	li		$t8, 0		# space flag set to 0
+	li		$t9, 0		# operator flag set to 0
+	li		$t3, 0		# COMPARE flag set to 0
+	j		start
+
+print:
+	lb			$t0, 0($a3)
+	li 			$v0, 11 # character
+	move		$a0, $t0
+	syscall
+	
+	jr			$ra
+
+end:
+	# END PROGRAM
+	li 		$v0, 10
+	syscall

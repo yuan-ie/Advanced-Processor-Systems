@@ -34,14 +34,14 @@ To complete this task:
      a. the number of space characters is __input - [line #]__. print the spaces and a star right after.
   3. second part (loop with two stars):
        for every line after line 1 to line [input]:
-       a. the number of spaces before the first star is decremented each time.
-       b. print a star.
-       c. the number of spaces after the first star is increased by 2 (starting from one space of the first iteration)
-       d. print a star.
+      - the number of spaces before the first star is decremented each time.
+      - print a star.
+      - the number of spaces after the first star is increased by 2 (starting from one space of the first iteration)
+      - print a star.
   4. third part (loop with two stars):
        for every line after line [input] to line [2*input - 1]:
-       a. the number of spaces before the first star is incremented each time.
-       b. print a star.
-       c. the number of spaces after the first star is increased by 2 (starting from one space of the first iteration)
-       d. print a star.
+      - the number of spaces before the first star is incremented each time.
+      - print a star.
+      - the number of spaces after the first star is increased by 2 (starting from one space of the first iteration)
+      - print a star.
   5. fourth part: same as first part.

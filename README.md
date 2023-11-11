@@ -22,6 +22,8 @@ Requirements:
 
 #### _Task 3:_
 > Print a diamond shape to I/O window.
+<img width="196" alt="image" src="https://github.com/yuan-ie/ece_4612/assets/42986591/e7c04d80-a42a-421b-8220-c68f6b92f7b2">
+
 
 Requirements:
 - take an integer input from I/O window
